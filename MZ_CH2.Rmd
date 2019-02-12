@@ -1,0 +1,345 @@
+---
+title: "CH2"
+author: "Mengqi Zhao"
+date: "February 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(xts)
+library(dygraphs)
+library(plotly)
+```
+
+
+# CH2 Intro to R & Work with Time Series Date
+## Get to know R
+### Lesson 1 - Get to know R
+```{r eval=FALSE}
+# load the ggplot2 library for plotting
+library(ggplot2)
+
+# download data from figshare
+# note that you are downloading the data into your
+download.file(url = "https://ndownloader.figshare.com/files/7010681", destfile = "data/boulder-precip.csv")
+
+# import data
+boulder_precip <- read.csv(file="data/boulder-precip.csv")
+
+# view first few rows of the data
+head(boulder_precip)
+
+# when you download the data you create a dataframe
+# view each column of the data frame using it's name (or header)
+boulder_precip$DATE
+
+# view the precip column
+boulder_precip$PRECIP
+
+# q plot stands for quick plot. Let's use it to plot your data
+qplot(x = boulder_precip$DATE,
+      y = boulder_precip$PRECIP)
+```
+
+### Lesson 2 & 3 - Variables, Data Types, Vector Data
+```{r}
+num_char <- c(1, 2, 3, 'a')
+num_logical <- c(1, 2, 3, '2.45')
+#char_logical <- c('a', 'b', 'c', frog)
+tricky <- c(1, 2, 3, '4')
+class(num_char)
+class(num_logical)
+# class(char_logical)
+class(tricky)
+
+weight_g <- c(50, 60, 65, 82)
+weight_g > 50
+weight_g[weight_g > 50]
+weight_g[weight_g < 30 | weight_g > 50]
+weight_g[weight_g < 30 & weight_g > 50]
+
+animals <- c("mouse", "rat", "dog", "cat")
+animals[animals == "cat" | animals == "rat"] # returns both rat and cat
+# The function %in% allows you to test if a value is found in a vector
+animals %in% c("rat", "cat", "dog", "duck")
+animals[animals %in% c("rat", "cat", "dog", "duck")]
+
+```
+
+### Lesson 4 - Import, Work with an dPlot Spreadsheed (Tabular) Data
+#### Challenge
+
+* List 3 arguments that are available in the read.csv function.
+* How do you figure out what working directory you are in?
+* List 2 ways to set the working directory in RStudio.
+* Explain what the $ is used for when working with a data.frame in R.
+* When you use read.csv are you executing a: a) function or b) variable ?
+```{r}
+args(read.csv)
+getwd()
+# setwd() and used the manu
+#function
+
+```
+
+### Lesson 5 - How to Address Missing Values
+```{r eval=FALSE}
+download.file("https://ndownloader.figshare.com/files/9282364", "data/boulder-precip.csv", method = "libcurl")
+boulder_precip <- read.csv(file = "data/boulder-precip.csv")
+str(boulder_precip)
+mean(boulder_precip$PRECIP)
+mean(boulder_precip$TEMP)
+boulder_precip$TEMP
+# plot the data with ggplot
+ggplot(data = boulder_precip, aes(x = DATE, y = TEMP)) +
+  geom_point() +
+  labs(title = "Temperature data for Boulder, CO")
+
+heights <- c(2, 4, 4, NA, 6)
+mean(heights)
+max(heights)
+mean(heights, na.rm = TRUE)
+max(heights, na.rm = TRUE)
+heights[!is.na(heights)]
+na.omit(heights)
+heights[complete.cases(heights)]
+
+mean(boulder_precip$TEMP, na.rm = TRUE)
+summary(boulder_precip$TEMP, na.rm = TRUE)
+
+boulder_precip_na <- read.csv(file = "data/boulder-precip.csv",
+                     na.strings = c("NA", " ", "-999"))
+boulder_precip_na$TEMP
+ggplot(data = boulder_precip_na, aes(x = DATE, y = TEMP)) +
+  geom_point() +
+  labs(title = "Temperature data for Boulder, CO",
+       subtitle = "missing data accounted for")
+
+sample <- c(2, 4, 4, "NA", 6)
+mean(sample, na.rm = TRUE)
+```
+
+### Lesson 6 - Plot Data and Customize Plots
+```{r}
+boulder_precip <- read.csv(file = "data/boulder-precip.csv")
+head(boulder_precip)
+
+ggplot(data = boulder_precip,  aes(x = DATE, y = PRECIP)) +
+    geom_point(alpha = 0.9, aes(color = PRECIP)) +
+    labs(x = "Date",
+      y = "Precipitation (Inches)",
+      title = "Daily Precipitation (inches)",
+      subtitle = "Boulder, Colorado 2013") + theme_bw(base_size = 9)
+```
+
+## Time Series Data
+### Lesson 1 - Dates
+```{r}
+boulder_precip$DATE <- as.Date(boulder_precip$DATE,
+                        format = "%m/%d/%y")
+class(boulder_precip$DATE)
+head(boulder_precip$DATE)
+ggplot(data = boulder_precip, aes(x = DATE, y = PRECIP)) +
+      geom_bar(stat = "identity", fill = "purple") +
+      labs(title = "Total daily precipitation in Boulder, Colorado",
+           subtitle = "Fall 2013",
+           x = "Date", y = "Daily Precipitation (Inches)")
+```
+### Lesson 2 - Use Tidyverse Pipes to subset
+```{r}
+# library(lubridate)
+# library(dplyr)
+options(stringsAsFactors = FALSE)
+
+# import the data
+boulder_daily_precip <- read.csv("data/week-02/precipitation/805325-precip-dailysum-2003-2013.csv",
+         header = TRUE,
+         na.strings = "999.99")
+head(boulder_daily_precip)
+str(boulder_daily_precip)
+summary(boulder_daily_precip$DAILY_PRECIP)
+max(boulder_daily_precip$DAILY_PRECIP)
+
+# Using Pipe
+boulder_daily_precip %>%
+  mutate(DATE = as.Date(boulder_daily_precip$DATE, format = "%m/%d/%y")) %>%
+  na.omit() %>%
+  ggplot(aes(x = DATE, y = DAILY_PRECIP)) +
+      geom_point(stat = "identity", color = "darkorchid4") +
+      labs(title = "Daily precipitation in Boulder, Colorado",
+           subtitle = "2003 - 2013",
+           x = "Date", y = "Daily Precipitation (Inches)") +
+     theme_bw(base_size = 11)
+
+# Subset the data
+# subset 2 months around flood
+boulder_daily_precip %>%
+  mutate(DATE = as.Date(boulder_daily_precip$DATE, format = "%m/%d/%y")) %>%
+  filter(DATE >= as.Date("2013-08-15") & DATE <= as.Date("2013-10-15")) %>% 
+  ggplot(aes(DATE,DAILY_PRECIP)) +
+  geom_bar(stat = "identity", fill = "darkorchid4") +
+  xlab("Date") +
+  ylab("Precipitation (inches)") +
+  xlim(as.Date("2013-08-15"), as.Date("2013-10-15")) +
+  ggtitle("Daily Total Precipitation Aug - Oct 2013 for Boulder Creek") +
+  theme_bw()
+
+precip_2012 <- boulder_daily_precip %>%
+  mutate(DATE = as.Date(boulder_daily_precip$DATE, format = "%m/%d/%y")) %>%
+  filter(DATE >= as.Date('2012-08-15') & DATE <= as.Date('2012-10-15'))
+
+ggplot(data=precip_2012, aes(DATE,DAILY_PRECIP)) +
+    geom_bar(stat = "identity", fill = "darkorchid4") +
+    xlab("Date") +
+    ylab("Precipitation (inches)") +
+    xlim(as.Date('2012-08-15'), as.Date('2012-10-15')) +
+    ylim(0,10) +
+    ggtitle("Daily Total Precipitation Aug - Oct 2013 for Boulder Creek") +
+    theme_bw()
+
+```
+
+### Lesson 3 - Summarize time series data using Tidyverse pipes
+```{r}
+boulder_daily_precip %>%
+  filter(JULIAN >= 230 & JULIAN <= 290) %>% 
+  ggplot(aes(x = JULIAN, y = DAILY_PRECIP)) +
+      geom_point(color = "darkorchid4") +
+      facet_wrap( ~ YEAR, ncol = 3) +
+      labs(title = "Daily Precipitation - Boulder, Colorado",
+           subtitle = "Data plotted by year",
+           y = "Daily Precipitation (inches)",
+           x = "Day of Year") +
+      theme_bw(base_size = 15)
+
+# add a month column to your boulder_daily_precip data.frame
+boulder_daily_precip <- boulder_daily_precip %>%
+  mutate(DATE = as.Date(boulder_daily_precip$DATE, format = "%m/%d/%y")) %>%
+  mutate(month = month(DATE))
+
+# calculate the sum precipitation for each month
+boulder_daily_precip_month <- boulder_daily_precip %>%
+  group_by(month, YEAR) %>%
+  summarise(sum_precip = sum(DAILY_PRECIP))
+
+# subset 2 months around flood
+boulder_daily_precip_month %>%
+  mutate(month2 = as.Date(paste0("2015-", month,"-01"),"%Y-%m-%d")) %>%
+  na.omit() %>% 
+  ggplot(aes(x = month2, y = sum_precip)) +
+      geom_bar(stat = "identity", fill = "darkorchid4") +
+      facet_wrap(~ YEAR, ncol = 3) +
+      labs(title = "Montly Total Daily Precipitation - Boulder, Colorado",
+           subtitle = "Data plotted by year",
+           y = "Daily precipitation (inches)",
+           x = "Month") + theme_bw(base_size = 15) +
+      scale_x_date(date_labels = "%b")
+
+```
+
+### Lesson 4 - HW Challenge: Plot USGS Stream DIscharge Data
+```{r}
+discharge <- read.csv("data/week-02/discharge/06730200-discharge-daily-1986-2013.csv",
+                      header = TRUE)
+head(discharge)
+
+discharge %>% 
+  mutate(date = as.Date(datetime, '%m/%d/%y')) %>%
+  filter(date >= as.Date('2013-08-15')& date <= as.Date('2013-10-15')) %>% 
+  ggplot(aes(x = date, y = disValue)) +
+  geom_point(stat = 'identity', color = 'purple') +
+  labs(title = "Discharge - Boulder, Colorado",
+           subtitle = "1986 - 2016",
+           y = "Discharge (cfs)",
+           x = "Date") +
+  theme_bw(base_size = 15)
+
+```
+### Lesson 5 - Subset & Aggregate Time Series Precipitation Data
+```{r}
+precip_boulder <- read.csv("data/week-02/precipitation/805333-precip-daily-1948-2013.csv",
+                           header = TRUE,
+                           na.strings = 999.99)
+head(precip_boulder)
+str(precip_boulder)
+max(precip_boulder$HPCP)
+
+hist(precip_boulder$HPCP,
+     main = "This looks better after the reimporting with\n no data values specified",
+     xlab = "Precip (inches)", ylab = "Frequency",
+     col = "darkorchid4")
+
+print("how many NA values are there?")
+sum(is.na(precip_boulder))
+
+# convert to date/time and retain as a new field
+precip_boulder$DATE <- as.POSIXct(precip_boulder$DATE,
+                                  format = "%Y%m%d %H:%M")
+str(precip_boulder)
+nrow(precip_boulder)
+daily_sum_precip <- precip_boulder %>%
+  mutate(day = as.Date(DATE, format = '%Y-%m-%d')) %>%
+  group_by(day) %>%
+  summarise(total_precip = sum(HPCP)) %>%
+  na.omit()
+
+daily_sum_precip %>%
+  filter(day >= as.Date("2013-01-01") & day <= as.Date("2013-10-15")) %>% 
+  ggplot(aes(x = day, y = total_precip)) +
+  geom_point(stat = 'identity', color = 'purple') +
+  labs(
+    title = "Hourly Precipitation - Boulder, Colorado",
+    subtitle = "1948 - 2013",
+    y = "Precipitation (Inches)",
+    x = "Date"
+  ) +
+  theme_bw(base_size = 15)
+
+tail(daily_sum_precip)
+nrow(daily_sum_precip)
+names(daily_sum_precip)
+
+```
+
+### Lesson 6 - Create Interactive Plots
+```{r}
+options(stringsAsFactors = FALSE)
+discharge_time <- read.csv("data/week-02/discharge/06730200-discharge-daily-1986-2013.csv")
+
+# fix date using pipes
+discharge_time <- discharge_time %>%
+  mutate(datetime = as.Date(datetime, format = "%m/%d/%y"))
+annual_precip <- ggplot(discharge_time, aes(x = datetime, y = disValue)) +
+  geom_point() +
+  labs(x = "Time",
+       y = "discharge value",
+       title = "my title")
+
+annual_precip
+
+# Time Series - Plotly
+# create interactive plotly plot
+ggplotly(annual_precip)
+
+# create time series object
+discharge_timeSeries <- xts(x = discharge_time$disValue,
+                            order.by = discharge_time$datetime)
+# create a basic interactive element
+interact_time <- dygraph(discharge_timeSeries)
+interact_time
+
+# create a basic interactive element
+interact_time2 <- dygraph(discharge_timeSeries) %>% dyRangeSelector()
+interact_time2
+```
+
+
+
+
