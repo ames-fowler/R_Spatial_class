@@ -152,6 +152,7 @@ ggplot(data = boulder_precip, aes(x = DATE, y = PRECIP)) +
            subtitle = "Fall 2013",
            x = "Date", y = "Daily Precipitation (Inches)")
 ```
+
 ### Lesson 2 - Use Tidyverse Pipes to subset
 ```{r}
 # library(lubridate)
@@ -262,6 +263,7 @@ discharge %>%
   theme_bw(base_size = 15)
 
 ```
+
 ### Lesson 5 - Subset & Aggregate Time Series Precipitation Data
 ```{r}
 precip_boulder <- read.csv("data/week-02/precipitation/805333-precip-daily-1948-2013.csv",
@@ -309,7 +311,7 @@ names(daily_sum_precip)
 ```
 
 ### Lesson 6 - Create Interactive Plots
-```{r}
+```{r eval=FALSE}
 options(stringsAsFactors = FALSE)
 discharge_time <- read.csv("data/week-02/discharge/06730200-discharge-daily-1986-2013.csv")
 
