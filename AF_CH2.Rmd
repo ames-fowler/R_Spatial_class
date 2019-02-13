@@ -1,0 +1,85 @@
+---
+title: "week_02_af"
+author: "Ames Fowler"
+date: "February 13, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Week 02 - Time Sieres 
+
+This is document chronicels the subsetting of timesires using data from Earth Data Science. 
+
+```{r }
+library(ggplot2)
+Precip<-read.csv("data/week-02/precipitation/805325-precip-dailysum-2003-2013.csv",na.strings = c("NA", "N/A", "MISSING",
+"NO_RECORD", -9999, -999,999.99,
+"?", ".", "....", ".....",
+"*", "**", "***",
+"****", "*****", "******",
+" ", "-"))
+
+head(Precip)
+Precip$DATE<-  as.Date(Precip$DATE, "%m/%d/%y")
+
+#Precip$DAILY_PRECIP[Precip$DAILY_PRECIP==999.99]<-0
+
+ggplot(data = Precip,aes(x= DATE, y= DAILY_PRECIP))+
+  geom_point()+
+  labs(x = "Date",
+      y = "Precipitation (Inches)",
+      title = "Daily Precipitation 2003-2013 (inches)")
+
+```
+this shows us the entire series - but we want to look at just the peak even in the fall of 2013.
+
+```{r Precip}
+
+Precip_2013<-subset(Precip, DATE > as.Date("2013-08-15") & DATE < as.Date("2013-10-15"))
+?subset
+
+ggplot(data = Precip_2013,aes(x= DATE, y= DAILY_PRECIP))+
+  geom_point()+
+  labs(x = "Date",
+      y = "Precipitation (Inches)",
+      title = "Daily Precipitation (inches) April 15 - Oct 15 2013 ")
+```
+
+We can think about stream flow as well. 
+```{r}
+Q<-read.csv("data/week-02/discharge/06730200-discharge-daily-1986-2013.csv",na.strings = c("NA", "N/A", "MISSING",
+"NO_RECORD", -9999, -999,999.99,
+"?", ".", "....", ".....",
+"*", "**", "***",
+"****", "*****", "******",
+" ", "-"))
+
+head(Q)
+Q$datetime<-  as.Date(Q$datetime, "%m/%d/%y")
+
+#Precip$DAILY_PRECIP[Precip$DAILY_PRECIP==999.99]<-0
+
+ggplot(data = Q,aes(x= datetime, y= disValue))+
+  geom_point()+
+  labs(x = "Date",
+      y = "Discharge (cfs)",
+      title = "Daily Discharge 2003-2013 (cfs)")
+```
+
+We can also subset to look at shorter periods of the flow to focus in on the flow effects of the large rain fall event. 
+
+```{r Q}
+
+Q_2013<-subset(Q, datetime > as.Date("2013-08-15") & datetime < as.Date("2013-10-15"))
+
+
+ggplot(data = Q_2013,aes(x= datetime, y= disValue))+
+  geom_point()+
+  labs(x = "Date",
+    y = "Discharge (cfs)",
+      title = "Daily Discharge (cfs) April 15 - Oct 15 2013")
+
+```
