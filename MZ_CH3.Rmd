@@ -1,0 +1,453 @@
+---
+title: "LiDAR Data"
+author: "Mengqi Zhao"
+date: "February 12, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# load libraries
+library(raster)
+library(rgdal)
+library(sf)
+library(maps)
+library(mapdata)
+```
+
+# LiDAR Raster Data in R
+## 1. Intro to LiDAR Data
+### Lesson 2. Lidar Point Cloud Data - Active Remote Sensing
+
+### Lesson 3. How Lidar Point Coulds Are Converted to Raster Data Formats - Remote Sensing
+
+## 2. Open Raster Data R
+### Lesson 1. Introduction to LiDAR Raster Data Products
+Objectives:
+
+* Open a lidar raster dataset in R.
+* List and define 3 spatial attributes of a raster dataset: extent, crs and resolution.
+* Identify the resolution of a raster in R.
+* Plot a lidar raster dataset in R
+
+```{r}
+# open raster data
+lidar_dem <- raster(x = "data/week-03/BLDR_LeeHill/pre-flood/lidar/pre_DTM.tif")
+
+# plot raster data
+plot(lidar_dem,
+     main = "Digital Elevation Model - Pre 2013 Flood")
+# zoom in to one region of the raster
+plot(lidar_dem,
+  xlim = c(473000, 473030), # define the x limits
+  ylim = c(4434000, 4434030), # define y limits for the plot
+     main = "Lidar Raster - Zoomed into one small region")
+
+# view resolution units
+crs(lidar_dem)
+# assign crs to an object (class) to use for reprojection and other tasks
+myCRS <- crs(lidar_dem)
+myCRS
+
+# what is the x and y resolution for your raster data?
+xres(lidar_dem)
+yres(lidar_dem)
+```
+
+### Lesson 2. Plot Histograms of Raster Values
+```{r}
+# plot histogram
+hist(lidar_dem,
+     main = "Distribution of surface elevation values",
+     # breaks = c(1600, 1800, 2000, 2100),
+     # breaks = 3,
+     xlab = "Elevation (meters)", ylab = "Frequency",
+     col = "purple")
+
+lidar_dsm <- raster(x = "data/week-03/BLDR_LeeHill/pre-flood/lidar/pre_DSM_hill.tif")
+# plot raster data
+plot(lidar_dsm,
+     main = "Digital Surface Model")
+# plot histogram
+hist(lidar_dsm,
+     main = "Digital Surface Model - Histogram",
+     # breaks = c(1600, 1800, 2000, 2100),
+     # breaks = 3,
+     xlab = "Elevation", ylab = "Frequency",
+     col = "purple")
+
+```
+
+### Lesson 3. How to Open and Use Files in Geotiff Format
+A GeoTIFF is a standard .tif or image file format that includes additional spatial (georeferencing) information embedded in the .tif file as tags. These are called embedded tags, tif tags. These tags can include the following raster metadata:
+
+1. Spatial Extent: What area does this dataset cover?
+2. Coordinate reference system: What spatial projection / coordinate reference system is used to store the data? Will it line up with other data?
+3. Resolution: The data appears to be in raster format. This means it is composed of pixels. What area on the ground does each pixel cover - i.e. What is its spatial resolution?
+4. No data value
+5. Layers: How many layers are in the .tif file. (more on that later)
+```{r}
+# view attributes associated with your DTM geotiff
+GDALinfo("data/week-03/BLDR_LeeHill/pre-flood/lidar/pre_DTM.tif")
+
+# view attributes / metadata of raster
+# view crs
+crs(lidar_dem)
+lidar_dem@extent
+
+extent_lidar_dsm <- extent(lidar_dsm)
+extent_lidar_dem <- extent(lidar_dem)
+
+# Do the two datasets cover the same spatial extents?
+if (extent_lidar_dem == extent_lidar_dsm) {
+  print("Both datasets cover the same spatial extent")
+}
+
+compareRaster(lidar_dsm, lidar_dem, extent = TRUE)
+compareRaster(lidar_dsm, lidar_dem, res = TRUE)
+
+# single layer (or band) vs multi-layer (Band Geotiffs)
+nlayers(lidar_dsm)
+```
+
+### Lesson 4. Create a Canopy Height Model With LiDAR Data
+
+1. **Digital Terrain Model (or DTM):** ground elevation or the elevation of the Earths surface (sometimes also called a DEM or digital elevation model).
+2. **Digital Surface Model (or DSM):** top of the surface (imagine draping a sheet over the canopy of a forest
+3. **Canopy Height Model (CHM):** The height of objects above the ground.
+
+*DSM - DTM = CHM*
+
+```{r}
+# plot raster data
+plot(lidar_dem,
+     main = "Digital Elevation Model - Pre 2013 Flood")
+
+# open raster data
+lidar_dsm <- raster(x = "data/week-03/BLDR_LeeHill/pre-flood/lidar/pre_DSM.tif")
+# plot raster data
+plot(lidar_dsm,
+     main = "Lidar Digital Surface Model (DSM)")
+
+# open raster data
+lidar_chm <- lidar_dsm - lidar_dem
+# plot raster data
+plot(lidar_chm,
+     main = "Lidar Canopy Height Model (CHM)")
+
+# plot raster data
+plot(lidar_chm,
+     breaks = c(0, 2, 10, 20, 30),
+     main = "Lidar Canopy Height Model",
+     col = c("white", "brown", "springgreen", "darkgreen"))
+
+# check to see if an output directory exists
+dir.exists("data/week-03/outputs")
+
+# if the output directory doesn't exist, create it
+if (!dir.exists("data/week-03/outputs")) {
+    # if the directory doesn't exist, create it
+    # recursive tells R to create the entire directory path (data/week-03/outputs)
+    dir.create("data/week-03/outputs", recursive=TRUE)
+}
+
+# # export CHM object to new GeotIFF
+# writeRaster(lidar_chm, "data/week-03/outputs/lidar_chm.tiff",
+#             format = "GTiff",  # output format = GeoTIFF
+#             overwrite = TRUE) # CAUTION: if this is true, it will overwrite an existing file
+
+# Challenge: Calculate changes in terrain
+lidar_dem_post <- raster(x = "data/week-03/BLDR_LeeHill/post-flood/lidar/post_DTM.tif")
+lidar_dem_diff <- lidar_dem_post - lidar_dem
+plot(lidar_dem_diff,
+     main = "DEM difference in elevation before and after flood")
+
+lidar_dsm_post <- raster(x = "data/week-03/BLDR_LeeHill/post-flood/lidar/post_DSM.tif")
+lidar_chm_post <- lidar_dsm_post - lidar_dem_post
+lidar_chm_diff <- lidar_chm_post - lidar_chm
+plot(lidar_chm_diff,
+     main = "CHM difference in elevation before and after flood")
+
+# writeRaster(lidar_chm_diff, "data/week-03/outputs/lidar_chm_diff.tiff",
+#             format = "GTiff",  # output format = GeoTIFF
+#             overwrite = TRUE) # CAUTION: if this is true, it will overwrite an existing file
+```
+
+### Lesson 5. Classify a Raster
+
+```{r}
+# open canopy height model
+lidar_chm <- raster("data/week-03/BLDR_LeeHill/outputs/lidar_chm.tif")
+summary(lidar_chm)
+
+# plot histogram of data
+hist(lidar_chm,
+     xlim = c(2, 25),
+     ylim = c(0, 4000),
+     main = "Distribution of raster cell values in the DTM difference data",
+     xlab = "Height (m)", ylab = "Number of Pixels",
+     col = "springgreen")
+
+# see how R is breaking up the data
+histinfo <- hist(lidar_chm)
+histinfo$counts
+histinfo$breaks
+
+# zoom in on x and y axis
+hist(lidar_chm,
+     xlim = c(2, 25),
+     ylim = c(0, 1000),
+     breaks = 100,
+     main = "Histogram of canopy height model differences \nZoomed in to -2 to 2 on the x axis",
+     col = "springgreen",
+     xlab = "Pixel value")
+
+# You may want to explore breaks in your histogram before plotting your data
+# Note: When using breaks = c() in the plotting, the y axis will auto change to density
+# density = (frequency/total samples)/bin width
+lidar_info <- hist(lidar_chm,
+     breaks = c(0, 2, 4, 7, 30),
+     ylim = c(0,1),
+     main = "Histogram with custom breaks",
+     xlab = "Height (m)" , ylab = "density",
+     col = "springgreen")
+lidar_info$breaks
+lidar_info$counts
+lidar_info$density
+
+# create classification matrix
+reclass_df <- c(0, 2, NA,
+                2, 4, 1,
+                4, 7, 2,
+                7, Inf, 3)
+reclass_df
+
+# reshape the object into a matrix with columns and rows
+reclass_m <- matrix(reclass_df,
+                ncol = 3,
+                byrow = TRUE)
+reclass_m
+
+# reclassify the raster using the reclass object - reclass_m
+chm_classified <- reclassify(lidar_chm,
+                     reclass_m)
+
+# view reclassified data
+barplot(chm_classified,
+        main = "Number of pixels in each class")
+# str(chm_classified)
+# assign all pixels that equal 0 to NA or no data value
+chm_classified[chm_classified == 0] <- NA
+
+# create color object with nice new colors!
+chm_colors <- c("palegoldenrod", "palegreen2", "palegreen4")
+
+# plot reclassified data
+plot(chm_classified,
+     legend = FALSE,
+     col = chm_colors,
+     axes = FALSE, # remove the box around the plot
+     box = FALSE,
+     main = "Classified Canopy Height Model \n short, medium, tall trees")
+
+legend("topright",
+       legend = c("short trees", "medium trees", "tall trees"),
+       fill = chm_colors,
+       border = FALSE,
+       bty = "n")
+```
+
+### Lesson 6. Clip Raster in R
+```{r}
+# import the vector boundary
+crop_extent <- readOGR("data/week-03/BLDR_LeeHill/clip-extent.shp")
+
+# plot imported shapefile
+# notice that you use add = T to add a layer on top of an existing plot in R.
+plot(crop_extent,
+     main = "Shapefile imported into R - crop extent",
+     axes = TRUE,
+     border = "blue")
+
+# crop the lidar raster using the vector extent
+lidar_chm_crop <- crop(lidar_chm, crop_extent)
+plot(lidar_chm_crop, main = "Cropped lidar chm")
+
+# add shapefile on top of the existing raster
+plot(crop_extent, add = TRUE)
+```
+
+#### Challenge: Canopy height change over time
+```{r}
+# crop_extent <- readOGR("data/week-03/BLDR_LeeHill/clip-extent.shp")
+lidar_chm_diff_crop <- crop(lidar_chm_diff, crop_extent)
+# create classification matrix
+reclass_df <- c(-25, 0, 1,
+                0, 25, 2)
+reclass_df
+
+# reshape the object into a matrix with columns and rows
+reclass_m <- matrix(reclass_df,
+                ncol = 3,
+                byrow = TRUE)
+reclass_m
+
+# reclassify the raster using the reclass object - reclass_m
+chm_classified <- reclassify(lidar_chm_diff_crop,
+                     reclass_m)
+
+# view reclassified data
+barplot(chm_classified,
+        main = "Number of pixels in each class")
+# str(chm_classified)
+# assign all pixels that equal 0 to NA or no data value
+chm_classified[chm_classified == 0] <- NA
+
+# create color object with nice new colors!
+chm_colors <- c("blueviolet", "aquamarine2")
+
+# plot reclassified data
+plot(chm_classified,
+     legend = FALSE,
+     col = chm_colors,
+     axes = FALSE, # remove the box around the plot
+     box = FALSE,
+     main = "Classified Canopy Height Change Model")
+
+legend("bottomright",
+       legend = c("negative change", "positive change"),
+       fill = chm_colors,
+       border = FALSE,
+       bty = "n")
+```
+
+#### Challenge: Terrain change pre and post flood
+```{r}
+# crop_extent <- readOGR("data/week-03/BLDR_LeeHill/clip-extent.shp")
+lidar_dem_diff_crop <- crop(lidar_dem_diff, crop_extent)
+# create classification matrix
+reclass_df <- c(-20, 0, 1,
+                0, 48, 2)
+reclass_df
+
+# reshape the object into a matrix with columns and rows
+reclass_m <- matrix(reclass_df,
+                ncol = 3,
+                byrow = TRUE)
+reclass_m
+
+# reclassify the raster using the reclass object - reclass_m
+chm_classified <- reclassify(lidar_dem_diff_crop,
+                     reclass_m)
+
+# view reclassified data
+barplot(chm_classified,
+        main = "Number of pixels in each class")
+# str(chm_classified)
+# assign all pixels that equal 0 to NA or no data value
+chm_classified[chm_classified == 0] <- NA
+
+# create color object with nice new colors!
+chm_colors <- c("blueviolet", "aquamarine2")
+
+# plot reclassified data
+plot(chm_classified,
+     legend = FALSE,
+     col = chm_colors,
+     axes = FALSE, # remove the box around the plot
+     box = FALSE,
+     main = "Classified Terrain Change Model")
+
+legend("topright",
+       legend = c("negative change", "positive change"),
+       fill = chm_colors,
+       border = FALSE,
+       bty = "n")
+```
+
+## 3. Refine R Markdown Reports
+### Lesson 1. Add a Basemap on an R Markdown Report Using ggmap
+```{r eval=FALSE}
+myMap <- get_map(location = "Boulder, Colorado",
+          source = "google",
+          maptype = "terrain", crop = FALSE,
+          zoom = 6)
+# plot map
+ggmap(myMap)
+
+myMap <- get_map(location = "Boulder, Colorado",
+          source = "google",
+          maptype = "satellite", crop = FALSE,
+          zoom = 6)
+# plot map
+ggmap(myMap)
+
+# water color maps
+myMap <- get_map(location = "Boulder, Colorado",
+          source = "stamen",
+          maptype = "watercolor", crop = FALSE,
+          zoom = 4)
+# plot map
+ggmap(myMap)
+
+# add points to your map
+# creating a sample data.frame with your lat/lon points
+gage_location <- data.frame(lon = c(-105.178333), lat = c(40.051667))
+
+# create a map with a point location for boulder.
+ggmap(myMap) + labs(x = "", y = "") +
+  geom_point(data = gage_location, aes(x = lon, y = lat, fill = "red", alpha = 0.2), size = 5, shape = 19) +
+  guides(fill = FALSE, alpha = FALSE, size = FALSE)
+
+# package 'maps'
+map('state')
+# add a title to your map
+title('Map of the United States')
+
+map('state', col = "darkgray",
+    fill = TRUE,
+    border = "white")
+# add a title to your map
+title('Map of the United States')
+
+map('county', regions = "Colorado", col = "darkgray", fill = TRUE, border = "grey80")
+map('state', regions = "Colorado", col = "black", add = TRUE)
+# add the x, y location of the stream guage using the points
+# notice i used two colors adn sized to may the symbol look a little brighter
+points(x = -105.178333, y = 40.051667, pch = 21, col = "violetred4", cex = 2)
+points(x = -105.178333, y = 40.051667, pch = 8, col = "white", cex = 1.3)
+# add a title to your map
+title('County Map of Colorado\nStream gage location')
+
+map('state', fill = TRUE, col = "darkgray", border = "white", lwd = 1)
+map(database = "usa", lwd = 1, add = TRUE)
+# add the adjacent parts of the US; can't forget my homeland
+map("state", "colorado", col = "springgreen",
+    lwd = 1, fill = TRUE, add = TRUE)
+# add gage location
+title("Stream gage location\nBoulder, Colorado")
+# add the x, y location of hte stream guage using the points
+points(x = -105.178333, y = 40.051667, pch = 8, col = "red", cex = 1.3)
+```
+
+### Lesson 2. Overlay Rasters
+```{r}
+# open dem hillshade
+lidar_dem_hill <- raster(x = "data/week-03/BLDR_LeeHill/pre-flood/lidar/pre_DTM_hill.tif")
+
+# plot raster data
+plot(lidar_dem_hill,
+     main = "Lidar Digital Elevation Model (DEM)\n overlayed on top of a hillshade",
+     col = grey(1:100/100),
+     legend = FALSE)
+
+plot(lidar_dem,
+     main = "Lidar Digital Elevation Model (DEM)",
+     add = TRUE, alpha = .5)
+
+
+```
+

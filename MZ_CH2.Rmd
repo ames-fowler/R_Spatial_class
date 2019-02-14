@@ -283,11 +283,11 @@ sum(is.na(precip_boulder))
 
 # convert to date/time and retain as a new field
 precip_boulder$DATE <- as.POSIXct(precip_boulder$DATE,
-                                  format = "%Y%m%d %H:%M")
+                                  format = "%Y%m%d %H:%M", tz = "America/Denver")
 str(precip_boulder)
 nrow(precip_boulder)
 daily_sum_precip <- precip_boulder %>%
-  mutate(day = as.Date(DATE, format = '%Y-%m-%d')) %>%
+  mutate(day = as.Date(DATE, format = '%Y-%m-%d',tz = "America/Denver")) %>%
   group_by(day) %>%
   summarise(total_precip = sum(HPCP)) %>%
   na.omit()
